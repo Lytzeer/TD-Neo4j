@@ -23,7 +23,7 @@ def create_user():
 @users_bp.route('/users/<int:user_id>', methods=['GET'])
 def get_user_by_id(user_id):
     user = graph.nodes.get(user_id)
-    if user and user["name"]:
+    if user and user["name"] and user.labels == {"User"}:
         return jsonify({"id": user.identity, "name": user["name"], "email": user["email"]})
     return jsonify({"error": "User not found"}), 404
 
@@ -31,7 +31,7 @@ def get_user_by_id(user_id):
 def update_user(user_id):
     data = request.json
     user = graph.nodes.get(user_id)
-    if user:
+    if user and user.labels == {"User"}:
         user["name"] = data.get("name", user["name"])
         user["email"] = data.get("email", user["email"])
         graph.push(user)
@@ -41,7 +41,7 @@ def update_user(user_id):
 @users_bp.route('/users/<int:user_id>', methods=['DELETE'])
 def delete_user(user_id):
     user = graph.nodes.get(user_id)
-    if user:
+    if user and user.labels == {"User"}:
         graph.delete(user)
         return jsonify({"message": "User deleted successfully"})
     return jsonify({"error": "User not found"}), 404
@@ -49,7 +49,7 @@ def delete_user(user_id):
 @users_bp.route('/users/<int:user_id>/friends', methods=['GET'])
 def get_user_friends(user_id):
     user = graph.nodes.get(user_id)
-    if user:
+    if user and user.labels == {"User"}:
         friends = graph.match((user,), r_type="FRIENDS_WITH")
         return jsonify([{"id": friend.end_node.identity, "name": friend.end_node["name"]} for friend in friends])
     return jsonify({"error": "User not found"}), 404
@@ -61,7 +61,7 @@ def add_friend(user_id):
     friend_id = int(friend_id)
     user = graph.nodes.get(user_id)
     friend = graph.nodes.get(friend_id)
-    if user and friend:
+    if user and friend and user.labels == {"User"} and friend.labels == {"User"}:
         relations.create_friends_with_relationship(user, friend)
         return jsonify({"message": "Friend added successfully"})
     return jsonify({"error": "User or friend not found"}), 404
@@ -70,7 +70,7 @@ def add_friend(user_id):
 def remove_friend(user_id, friend_id):
     user = graph.nodes.get(user_id)
     friend = graph.nodes.get(friend_id)
-    if user and friend:
+    if user and friend and user.labels == {"User"} and friend.labels == {"User"}:
         rel = graph.match_one((user, friend), r_type="FRIENDS_WITH")
         if rel is not None:
             graph.separate(rel)
@@ -81,7 +81,7 @@ def remove_friend(user_id, friend_id):
 def check_friendship(user_id, friend_id):
     user = graph.nodes.get(user_id)
     friend = graph.nodes.get(friend_id)
-    if user and friend:
+    if user and friend and user.labels == {"User"} and friend.labels == {"User"}:
         rel = graph.match_one((user, friend), r_type="FRIENDS_WITH")
         return jsonify({"are_friends": rel is not None})
     return jsonify({"error": "User or friend not found"}), 404
@@ -90,7 +90,7 @@ def check_friendship(user_id, friend_id):
 def get_mutual_friends(user_id, other_id):
     user = graph.nodes.get(user_id)
     other = graph.nodes.get(other_id)
-    if user and other:
+    if user and other and user.labels == {"User"} and other.labels == {"User"}:
         user_friends = set(friend.end_node for friend in graph.match((user,), r_type="FRIENDS_WITH"))
         other_friends = set(friend.end_node for friend in graph.match((other,), r_type="FRIENDS_WITH"))
         mutual_friends = user_friends & other_friends

@@ -20,7 +20,7 @@ def get_all_comments():
 @posts_bp.route('/comments/<int:comment_id>', methods=['GET'])
 def get_comment_by_id(comment_id):
     comment = graph.nodes.get(comment_id)
-    if comment:
+    if comment and comment.labels == {"Comment"}:
         return jsonify({"id": comment.identity, "content": comment["content"]})
     return jsonify({"error": "Comment not found"}), 404
 
@@ -33,7 +33,7 @@ def create_comment(post_id):
     user = graph.nodes.get(user_id)
     post = graph.nodes.get(post_id)
 
-    if user and post:
+    if user and post and post.labels == {"Post"} and user.labels == {"User"}:
         comment_node = Node("Comment", content=content, created_at=datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
         graph.create(comment_node)
         commentaire
@@ -46,7 +46,7 @@ def create_comment(post_id):
 @posts_bp.route('/posts/<int:post_id>/comments', methods=['GET'])
 def get_comments_for_post(post_id):
     post = graph.nodes.get(post_id)
-    if post:
+    if post and post.labels == {"Post"}:
         comments = graph.match((post,), r_type="HAS_COMMENT")
         return jsonify([
             {"id": comment.end_node.identity, "content": comment.end_node["content"]}
@@ -58,7 +58,7 @@ def get_comments_for_post(post_id):
 def update_comment(comment_id):
     data = request.json
     comment = graph.nodes.get(comment_id)
-    if comment:
+    if comment and comment.labels == {"Comment"}:
         comment["content"] = data.get("content", comment["content"])
         graph.push(comment)
         return jsonify({"message": "Comment updated successfully"})
@@ -67,7 +67,7 @@ def update_comment(comment_id):
 @posts_bp.route('/comments/<int:comment_id>', methods=['DELETE'])
 def delete_comment(comment_id):
     comment = graph.nodes.get(comment_id)
-    if comment:
+    if comment and comment.labels == {"Comment"}:
         graph.delete(comment)
         return jsonify({"message": "Comment deleted successfully"})
     return jsonify({"error": "Comment not found"}), 404
@@ -76,7 +76,7 @@ def delete_comment(comment_id):
 def delete_comment_from_post(post_id, comment_id):
     post = graph.nodes.get(post_id)
     comment = graph.nodes.get(comment_id)
-    if post and comment:
+    if post and comment and post.labels == {"Post"} and comment.labels == {"Comment"}:
         rel = graph.match_one((post, comment), r_type="HAS_COMMENT")
         if rel is not None:
             graph.delete(comment)
@@ -89,7 +89,7 @@ def like_comment(comment_id):
     user_id = data['user_id']
     user = graph.nodes.get(user_id)
     comment = graph.nodes.get(comment_id)
-    if user and comment:
+    if user and comment and comment.labels == {"Comment"} and user.labels == {"User"}:
         relations.create_likes_relationship(user, comment)
         return jsonify({"message": "Comment liked successfully"})
 
@@ -99,7 +99,7 @@ def unlike_comment(comment_id):
     user_id = data['user_id']
     user = graph.nodes.get(user_id)
     comment = graph.nodes.get(comment_id)
-    if user and comment:
+    if user and comment and comment.labels == {"Comment"} and user.labels == {"User"}:
         print("User and comment found")
         rel = graph.match_one((user, comment), r_type="LIKES")
         print(rel is not None)
